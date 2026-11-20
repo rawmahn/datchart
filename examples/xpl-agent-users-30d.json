@@ -1,0 +1,17 @@
+{
+  "v": 0,
+  "id": "xpl-agent-users-30d",
+  "title": "Agent users / day",
+  "kind": "line",
+  "source": {
+    "url": "https://mcp.posthog.com/mcp",
+    "tool": "exec",
+    "args": {
+      "command": "call --json execute-sql {\"query\": \"SELECT toDate(timestamp) AS day, uniq(person_id) AS users FROM events WHERE event LIKE 'agentic_%' AND timestamp >= today() - INTERVAL 30 DAY AND timestamp < today() GROUP BY day ORDER BY day\"}"
+    }
+  },
+  "jq": ".results | split(\"\\n\")[1:] | map(split(\"|\")) | {x: map(.[0]), series: [{name: \"users\", values: map(.[1] | tonumber)}]}",
+  "format": {
+    "number": "compact"
+  }
+}

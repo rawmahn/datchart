@@ -1,0 +1,17 @@
+{
+  "v": 0,
+  "id": "xpl-create-push-export",
+  "title": "Create → push → export, 30 d",
+  "kind": "bar",
+  "source": {
+    "url": "https://mcp.posthog.com/mcp",
+    "tool": "exec",
+    "args": {
+      "command": "call --json execute-sql {\"query\": \"SELECT uniqIf(person_id, event = 'agentic_project_created') AS created, uniqIf(person_id, event = 'agentic_code_pushed') AS pushed, uniqIf(person_id, event = 'agentic_export_finished') AS exported FROM events WHERE event IN ('agentic_project_created', 'agentic_code_pushed', 'agentic_export_finished') AND timestamp >= now() - INTERVAL 30 DAY\"}"
+    }
+  },
+  "jq": ".results | split(\"\\n\") | {x: (.[0] | split(\"|\")), series: [{name: \"users\", values: (.[1] | split(\"|\") | map(tonumber))}]}",
+  "format": {
+    "number": "compact"
+  }
+}

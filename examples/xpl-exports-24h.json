@@ -1,0 +1,18 @@
+{
+  "v": 0,
+  "id": "xpl-exports-24h",
+  "title": "Exports, 24 h",
+  "kind": "kpi",
+  "source": {
+    "url": "https://mcp.posthog.com/mcp",
+    "tool": "exec",
+    "args": {
+      "command": "call --json execute-sql {\"query\": \"SELECT countIf(timestamp >= now() - INTERVAL 1 DAY) AS value, countIf(timestamp < now() - INTERVAL 1 DAY) AS previous FROM events WHERE event = 'agentic_export_finished' AND timestamp >= now() - INTERVAL 2 DAY\"}"
+    }
+  },
+  "jq": ".results | split(\"\\n\")[1] | split(\"|\") | map(tonumber) | {value: .[0], previous: .[1]}",
+  "format": {
+    "number": "plain",
+    "delta": "percent"
+  }
+}

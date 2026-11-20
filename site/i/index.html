@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Datchart widget</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>Datchart widget</h1>
+  <p id="status" class="muted">Reading the link…</p>
+  <section id="widget" hidden>
+    <dl>
+      <dt>Title</dt><dd id="w-title"></dd>
+      <dt>Kind</dt><dd id="w-kind"></dd>
+      <dt>Server</dt><dd id="w-server"></dd>
+      <dt>Tool</dt><dd id="w-tool"></dd>
+    </dl>
+    <details><summary>Full recipe</summary><pre id="w-json"></pre></details>
+  </section>
+  <section id="phone" hidden>
+    <p>This link should have opened the Datchart app. If you are reading this, the app is not installed yet: get it from <a href="https://github.com/rawmahn/datchart/releases">GitHub Releases</a>, then open the link again.</p>
+  </section>
+  <section id="desktop" hidden>
+    <p>Scan with your phone's camera to add this widget to Datchart.</p>
+    <div id="qr" role="img" aria-label="QR code of this link"></div>
+    <button id="copy" type="button">Copy link</button>
+  </section>
+  <p class="muted small">The widget travels in the part of the link after <code>#</code>, which browsers never send to a server. This page decodes it on your device and makes no network requests.</p>
+</main>
+<script src="qrcode.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
