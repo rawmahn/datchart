@@ -47,6 +47,11 @@ class MainActivity : ComponentActivity() {
         setContent { MaterialTheme { Surface(Modifier.fillMaxSize()) { Screen() } } }
     }
 
+    override fun onResume() {
+        super.onResume()
+        Spike.resume()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handle(intent)
@@ -76,7 +81,7 @@ class MainActivity : ComponentActivity() {
             SERVERS.forEach { ServerCard(it, redirect) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(onClick = { copyLog() }) { Text("Copy log") }
-                OutlinedButton(onClick = { Spike.log.clear() }) { Text("Clear") }
+                OutlinedButton(onClick = { Spike.clearLog() }) { Text("Clear") }
             }
             SelectionContainer {
                 Text(Spike.log.joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 11.sp)

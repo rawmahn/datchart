@@ -45,6 +45,18 @@ or an **https App Link**. An App Link needs `/.well-known/assetlinks.json` at th
 which a project page on `rawmahn.github.io/datchart` can't serve (it would need the
 `rawmahn.github.io` repo or a custom domain).
 
+## First phone run (2026-11-21, build 1)
+
+The PostHog sign-in reached the token exchange and failed with `Unable to resolve host
+"oauth.posthog.com": No address associated with hostname`. Discovery against the same host had worked a
+moment earlier. Most likely cause: with the loopback redirect, build 1 swapped the code for tokens right
+when the redirect arrived, while the app was still behind the Custom Tab, and Android cuts a background
+app's network (Data Saver, battery "restricted", newer Android's own limits). That shows up as this DNS error.
+Since build 2 the redirect is only stored. The exchange runs when the app is back in front (`onResume`),
+and is retried on the next resume if the network fails. The log is kept on disk and starts with the
+phone's Android version and its Data Saver / background settings.
+The real app has to do the same: no token calls from the background without a foreground service or WorkManager.
+
 Still to find out on the phone: whether the login pages work in a Custom Tab, token lifetimes,
 whether refresh works and rotates the refresh token, which PostHog scopes the `exec` tool needs,
 and whether the loopback redirect brings the app back by itself.

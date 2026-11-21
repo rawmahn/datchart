@@ -1,9 +1,12 @@
 package com.rawmahn.datchart.spike
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.net.Uri
+import android.os.Build
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -26,6 +29,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.File
+import java.io.IOException
 import java.io.InputStreamReader
 import java.net.InetAddress
 import java.net.ServerSocket
@@ -81,13 +86,44 @@ object Spike {
     private val json = "application/json".toMediaType()
     private val time = SimpleDateFormat("HH:mm:ss", Locale.US)
     private var loopback: ServerSocket? = null
+    private var finishing = false
+    private val logFile by lazy { File(app.filesDir, "log.txt") }
 
     fun init(context: Context) {
+        if (::app.isInitialized) return
         app = context.applicationContext
+        // The log survives the process being killed behind the Custom Tab, so "Copy log" has everything.
+        runCatching { if (logFile.exists()) log.addAll(logFile.readLines().takeLast(1000)) }
+        say("app started (build ${appVersion()}, Android ${Build.VERSION.RELEASE} / SDK ${Build.VERSION.SDK_INT}, ${Build.MANUFACTURER} ${Build.MODEL}); ${backgroundLimits()}")
     }
 
     fun say(line: String) {
-        scope.launch { log.add("${time.format(Date())} $line") }
+        val stamped = "${time.format(Date())} $line"
+        scope.launch {
+            log.add(stamped)
+            runCatching { logFile.appendText(stamped.replace("\n", "\n    ") + "\n") }
+        }
+    }
+
+    fun clearLog() {
+        log.clear()
+        runCatching { logFile.delete() }
+    }
+
+    private fun appVersion(): String =
+        runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "?"
+
+    /** Data Saver and the battery "restricted" setting both cut an app's network while it is in the background. */
+    private fun backgroundLimits(): String {
+        val cm = app.getSystemService(ConnectivityManager::class.java)
+        val dataSaver = when (cm?.restrictBackgroundStatus) {
+            ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED -> "on for this app"
+            ConnectivityManager.RESTRICT_BACKGROUND_STATUS_WHITELISTED -> "on, app exempt"
+            ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED -> "off"
+            else -> "?"
+        }
+        val restricted = if (Build.VERSION.SDK_INT >= 28) app.getSystemService(ActivityManager::class.java)?.isBackgroundRestricted.toString() else "n/a"
+        return "Data Saver: $dataSaver, background restricted: $restricted"
     }
 
     fun run(label: String, block: suspend () -> Unit) {
@@ -229,9 +265,12 @@ object Spike {
                         )
                         if (hit) {
                             socket.close()
-                            say("loopback: got $path")
+                            // Don't exchange the code here: the app is behind the Custom Tab, and Android cuts a
+                            // background app's network (first phone run: "Unable to resolve host oauth.posthog.com").
+                            // Keep it and finish in onResume, once the app is in front again.
+                            prefs.edit().putString("callback", JSONObject().put("query", query.orEmpty()).put("via", "loopback").toString()).commit()
+                            say("loopback: got $path, finishing once the app is back in front")
                             scope.launch {
-                                finish(OAuth.parseQuery(query), "loopback")
                                 // Try to come back on top of the Custom Tab by ourselves; Android may block this
                                 // background start, in which case the link on the page does it.
                                 runCatching {
@@ -254,9 +293,23 @@ object Spike {
     /** Called from MainActivity for com.rawmahn.datchart.spike:/… intents. */
     fun onIntent(uri: Uri) {
         when (uri.path) {
-            "/oauth" -> scope.launch { finish(OAuth.parseQuery(uri.encodedQuery), "custom scheme") }
+            "/oauth" -> prefs.edit().putString("callback", JSONObject().put("query", uri.encodedQuery.orEmpty()).put("via", "custom scheme").toString()).commit()
             "/back" -> say("back link tapped (the app did not come back by itself)")
             else -> say("unknown intent $uri")
+        }
+    }
+
+    /** From MainActivity.onResume: finish a sign-in whose redirect arrived, now that the app is in front. */
+    fun resume() {
+        if (finishing) return
+        val cb = prefs.getString("callback", null)?.let(::JSONObject) ?: return
+        finishing = true
+        scope.launch {
+            try {
+                finish(OAuth.parseQuery(cb.optString("query")), cb.optString("via"))
+            } finally {
+                finishing = false
+            }
         }
     }
 
@@ -276,10 +329,14 @@ object Spike {
                 .build()
             val t = tokenRequest(pending.getString("token_endpoint"), form)
             save(server, t, pending, redirect.label)
-            prefs.edit().remove("pending").apply()
+            prefs.edit().remove("pending").remove("callback").apply()
             say("${server.name}: ✓ signed in. ${describe(t)}")
+        } catch (e: IOException) {
+            // The request never got an answer, so the code is unused: keep it and try again on the next resume.
+            say("✗ finishing sign-in: ${e.javaClass.simpleName}: ${e.message} (${backgroundLimits()}); will retry when the app comes to the front again")
         } catch (e: Throwable) {
-            say("✗ finishing sign-in: ${e.message}")
+            prefs.edit().remove("callback").apply()
+            say("✗ finishing sign-in: ${e.javaClass.simpleName}: ${e.message}")
         }
         version.intValue++
     }
