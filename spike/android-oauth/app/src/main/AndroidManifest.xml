@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- ConnectivityManager.getRestrictBackgroundStatus (Data Saver line in the log) throws SecurityException without it:
+         builds 2-4 crashed on start. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Custom Tabs need the browser to be visible to the app (Android 11+ package visibility). -->
     <queries>

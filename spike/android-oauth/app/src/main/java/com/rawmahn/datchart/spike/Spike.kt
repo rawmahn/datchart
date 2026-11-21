@@ -98,6 +98,12 @@ object Spike {
     fun init(context: Context) {
         if (::app.isInitialized) return
         app = context.applicationContext
+        // A crash lands in the log file too, so the next start shows it and "Copy log" carries it.
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, e ->
+            runCatching { logFile.appendText("${time.format(Date())} ✗ CRASH: ${e.stackTraceToString().replace("\n", "\n    ")}\n") }
+            previous?.uncaughtException(thread, e)
+        }
         // The log survives the process being killed behind the Custom Tab, so "Copy log" has everything.
         runCatching { if (logFile.exists()) log.addAll(logFile.readLines().takeLast(1000)) }
         say("app started (build ${appVersion()}, Android ${Build.VERSION.RELEASE} / SDK ${Build.VERSION.SDK_INT}, ${Build.MANUFACTURER} ${Build.MODEL}); ${backgroundLimits()}")
@@ -120,7 +126,9 @@ object Spike {
         runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "?"
 
     /** Data Saver and the battery "restricted" setting both cut an app's network while it is in the background. */
-    fun backgroundLimits(): String {
+    fun backgroundLimits(): String = runCatching { readBackgroundLimits() }.getOrElse { "background limits unknown (${it.javaClass.simpleName})" }
+
+    private fun readBackgroundLimits(): String {
         val cm = app.getSystemService(ConnectivityManager::class.java)
         val dataSaver = when (cm?.restrictBackgroundStatus) {
             ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED -> "on for this app"

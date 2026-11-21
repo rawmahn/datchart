@@ -105,6 +105,18 @@ tried, and the PostHog client from the first run reused. New this time:
 So loopback is unreliable on this phone even for PostHog, which points at the browser-to-`127.0.0.1` hop
 rather than at Tally alone. Build 4 installs next to build 1 (see **Get it**) so the next run is build 4.
 
+## Build 4 crashed on start (2026-11-21), fixed in build 5
+
+Builds 2-4 all crashed in `onCreate`: the Data Saver line in the log calls
+`ConnectivityManager.getRestrictBackgroundStatus()`, which throws `SecurityException` without the
+`ACCESS_NETWORK_STATE` permission. Build 5 declares it, the log diagnostics can no longer crash the app, and
+an uncaught crash is written to the log file, so it shows up in the next start's "Copy log".
+
+Reproduced and checked on an emulator in a cloud session without KVM: Android SDK command-line tools,
+`system-images;android-29;default;x86`, `ANDROID_I_WANT_MY_TCG=yes emulator -avd <name> -no-window -accel off`
+(boots in ~3 min), then `adb push` + `pm install` (plain `adb install` hung) and `adb logcat -b crash`.
+Robolectric did not catch this one: its `ConnectivityManager` shadow skips the permission check.
+
 Still to find out on the phone: whether the login pages work in a Custom Tab, token lifetimes,
 whether refresh works and rotates the refresh token, which PostHog scopes the `exec` tool needs,
 and whether the loopback redirect brings the app back by itself.
