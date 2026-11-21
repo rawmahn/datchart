@@ -9,8 +9,11 @@ The real app will be built separately; this code is a reference, not its base.
 ## Get it
 
 CI builds a debug APK on every push that touches this folder and attaches it to a
-[pre-release](https://github.com/rawmahn/datchart/releases) `spike-oauth-<n>`. Each build has its own
-debug key, so uninstall the previous one before installing a new one.
+[pre-release](https://github.com/rawmahn/datchart/releases) `spike-oauth-<n>`. Builds 1-3 had a random
+debug key each, so a new one installed only after uninstalling the old one (and two phone runs ended up on
+build 1). Since build 4 the app id is `com.rawmahn.datchart.oauthspike` (was `…datchart.spike`), so it
+installs next to builds 1-3, and a fixed debug key (`app/spike-debug.keystore`, committed on purpose, spike
+only) lets every later build install over it. The launcher label is `Datchart spike <build>`.
 
 Locally: `./gradlew testDebugUnitTest assembleDebug` (JDK 17+, Android SDK 35).
 
@@ -85,6 +88,22 @@ coming back to the app while a sign-in still waits logs how long the tab was ope
 result to the app through its scheme. It needs no App Link (so no `assetlinks.json`), and it skips the
 browser-to-loopback hop. The code passes through a public static page, which PKCE makes useless to
 anyone else.
+
+## Third phone run (2026-11-21, still build 1)
+
+Again build 1: no `copied from build …` first line (build 3 adds it when copying), no https bounce option
+tried, and the PostHog client from the first run reused. New this time:
+
+- **PostHog over the custom scheme works**: code back through `com.rawmahn.datchart.spike:/oauth` within
+  5 s of opening the tab, same 7-day token and refresh token. PostHog's DCR answer adds its own
+  `https://oauth.posthog.com/oauth/callback/` to the client's `redirect_uris`.
+- **PostHog over loopback did not come back this time** (it did in the second run): 20 s in the tab, no
+  `/callback`; the tool calls after that ran on the token from the second run.
+- **Tally**: DCR rejects the custom scheme again, and a fourth loopback sign-in brought nothing back.
+- Refresh not tried.
+
+So loopback is unreliable on this phone even for PostHog, which points at the browser-to-`127.0.0.1` hop
+rather than at Tally alone. Build 4 installs next to build 1 (see **Get it**) so the next run is build 4.
 
 Still to find out on the phone: whether the login pages work in a Custom Tab, token lifetimes,
 whether refresh works and rotates the refresh token, which PostHog scopes the `exec` tool needs,

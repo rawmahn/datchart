@@ -21,12 +21,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Custom-scheme redirect (com.rawmahn.datchart.spike:/oauth) and the "back to app" link (…:/back). -->
+            <!-- The app's own scheme (= applicationId, com.rawmahn.datchart.oauthspike): custom-scheme redirect (:/oauth),
+                 https bounce page (:/https) and the "back to app" link (:/back). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.rawmahn.datchart.spike" />
+                <data android:scheme="${applicationId}" />
             </intent-filter>
         </activity>
     </application>

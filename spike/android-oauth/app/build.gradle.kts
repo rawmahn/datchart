@@ -12,12 +12,26 @@ android {
     namespace = "com.rawmahn.datchart.spike"
     compileSdk = 35
     defaultConfig {
-        // Its own id, so the spike never collides with the real app later.
-        applicationId = "com.rawmahn.datchart.spike"
+        // Its own id, so the spike never collides with the real app later. Since build 4 it is
+        // ...oauthspike (was ...spike): builds 1-3 had a random debug key each, so a new build could
+        // only install after uninstalling the old one; the new id installs next to them instead.
+        applicationId = "com.rawmahn.datchart.oauthspike"
         minSdk = 26
         targetSdk = 35
         versionCode = build
         versionName = "0.0.$build"
+        // The launcher label shows the build, so it's clear which one is installed.
+        resValue("string", "app_name", "Datchart spike $build")
+    }
+    signingConfigs {
+        // A fixed debug key (committed on purpose: throwaway spike, well-known "android" passwords),
+        // so every later build installs over the previous one. Never reuse it for the real app.
+        getByName("debug") {
+            storeFile = file("spike-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

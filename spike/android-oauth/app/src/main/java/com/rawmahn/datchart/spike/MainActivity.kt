@@ -59,7 +59,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handle(intent: Intent?) {
         val uri = intent?.data ?: return
-        if (uri.scheme == "com.rawmahn.datchart.spike") Spike.onIntent(uri)
+        if (uri.scheme == APP_SCHEME) Spike.onIntent(uri)
         intent.data = null
     }
 

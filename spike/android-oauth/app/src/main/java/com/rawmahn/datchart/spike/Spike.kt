@@ -67,13 +67,16 @@ val SERVERS = listOf(
     ),
 )
 
+/** The app's own URI scheme, the same as its applicationId (build.gradle.kts, manifest). */
+const val APP_SCHEME = "com.rawmahn.datchart.oauthspike"
+
 enum class Redirect(val label: String, val uri: String) {
     // RFC 8252 loopback. Tally accepts only https, http://localhost/127.0.0.1 or oob (checked 2026-11-20).
     LOOPBACK("Loopback 127.0.0.1", "http://127.0.0.1:47823/callback"),
     // Private-use scheme. PostHog accepts it, Tally's DCR rejects it.
-    SCHEME("Custom scheme", "com.rawmahn.datchart.spike:/oauth"),
+    SCHEME("Custom scheme", "$APP_SCHEME:/oauth"),
     // https page on the project's GitHub Pages (site/oauth/) that forwards the query to
-    // com.rawmahn.datchart.spike:/https. No App Link needed; avoids the browser -> loopback hop.
+    // $APP_SCHEME:/https. No App Link needed; avoids the browser -> loopback hop.
     HTTPS("https bounce page", "https://rawmahn.github.io/datchart/oauth/"),
 }
 
@@ -263,7 +266,7 @@ object Spike {
                         say("loopback: connection: ${line.substringBefore(' ').ifEmpty { "(empty request)" }} $path ${OAuth.describeParams(query)}")
                         val html = if (hit) {
                             "<html><body style='font:20px sans-serif;padding:24px'><p>Signed in. Datchart should come back by itself.</p>" +
-                                "<p><a href='com.rawmahn.datchart.spike:/back'>Back to Datchart</a></p></body></html>"
+                                "<p><a href='$APP_SCHEME:/back'>Back to Datchart</a></p></body></html>"
                         } else ""
                         val status = if (hit) "200 OK" else "404 Not Found"
                         conn.getOutputStream().write(
@@ -296,7 +299,7 @@ object Spike {
         }.start()
     }
 
-    /** Called from MainActivity for com.rawmahn.datchart.spike:/… intents. */
+    /** Called from MainActivity for $APP_SCHEME:/… intents. */
     fun onIntent(uri: Uri) {
         when (uri.path) {
             "/oauth" -> prefs.edit().putString("callback", JSONObject().put("query", uri.encodedQuery.orEmpty()).put("via", "custom scheme").toString()).commit()

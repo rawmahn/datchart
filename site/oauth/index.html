@@ -14,7 +14,7 @@
   a.button { display: inline-block; padding: 14px 22px; border-radius: 10px; background: var(--accent); color: #fff; text-decoration: none; }
 </style>
 <p id="message">Sending you back to Datchart…</p>
-<p><a class="button" id="back" href="com.rawmahn.datchart.spike:/back">Back to Datchart</a></p>
+<p><a class="button" id="back" href="com.rawmahn.datchart.oauthspike:/back">Back to Datchart</a></p>
 <script>
   var query = location.search;
   var params = new URLSearchParams(query);
@@ -25,7 +25,7 @@
     message.textContent = 'This page passes a sign-in result to the Datchart app, and this link has none.';
   }
   if (query) {
-    var target = 'com.rawmahn.datchart.spike:/https' + query;
+    var target = 'com.rawmahn.datchart.oauthspike:/https' + query;
     document.getElementById('back').href = target;
     location.replace(target);
   }

@@ -31,7 +31,7 @@ jobs:
         with:
           tag_name: spike-oauth-${{ github.run_number }}
           name: OAuth spike ${{ github.run_number }}
-          body: Throwaway spike build from ${{ github.sha }} (debug-signed, so uninstall the previous one first). See spike/android-oauth/README.md.
+          body: Throwaway spike build from ${{ github.sha }}. Since build 4 it installs next to builds 1-3 (new app id) and later builds update it in place (fixed debug key). See spike/android-oauth/README.md.
           files: spike/android-oauth/datchart-oauth-spike.apk
           prerelease: true
           make_latest: false
