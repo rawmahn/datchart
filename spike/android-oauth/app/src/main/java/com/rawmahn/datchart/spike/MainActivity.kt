@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
             Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Datchart OAuth spike", style = MaterialTheme.typography.headlineSmall)
+            Text("Datchart OAuth spike · build ${Spike.appVersion()}", style = MaterialTheme.typography.headlineSmall)
             Text("Redirect for the next sign-in:")
             Redirect.entries.forEach { r ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -117,7 +117,8 @@ class MainActivity : ComponentActivity() {
 
     private fun copyLog() {
         val cm = getSystemService(ClipboardManager::class.java)
-        cm.setPrimaryClip(ClipData.newPlainText("Datchart spike log", Spike.log.joinToString("\n")))
+        val header = "copied from build ${Spike.appVersion()} (Android ${android.os.Build.VERSION.RELEASE}); ${Spike.backgroundLimits()}"
+        cm.setPrimaryClip(ClipData.newPlainText("Datchart spike log", (listOf(header) + Spike.log).joinToString("\n")))
         Toast.makeText(this, "Log copied", Toast.LENGTH_SHORT).show()
     }
 }

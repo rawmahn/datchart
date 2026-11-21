@@ -85,6 +85,15 @@ object OAuth {
         return if (q < 0) target to null else target.substring(0, q) to target.substring(q + 1)
     }
 
+    /** Parameter names of a redirect query, for the log: values left out, except error and error_description. */
+    fun describeParams(query: String?): String {
+        val params = parseQuery(query)
+        if (params.isEmpty()) return "(no parameters)"
+        return "with " + params.entries.joinToString(", ") { (k, v) ->
+            if (k == "error" || k == "error_description") "$k=$v" else k
+        }
+    }
+
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
     private fun dec(s: String) = URLDecoder.decode(s, "UTF-8")
 }

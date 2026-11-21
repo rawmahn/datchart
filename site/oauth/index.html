@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>Back to Datchart</title>
+<!-- OAuth redirect for the Datchart Android app (spike/android-oauth): hands the sign-in result
+     (?code=…&state=… or ?error=…) to the app through its own scheme. Nothing is sent anywhere else. -->
+<style>
+  :root { color-scheme: light dark; --bg: #fff; --fg: #1b1f24; --accent: #1f6feb; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --accent: #388bfd; } }
+  body { background: var(--bg); color: var(--fg); font: 18px/1.45 system-ui, sans-serif; margin: 0; padding: 24px 16px; max-width: 32rem; }
+  a.button { display: inline-block; padding: 14px 22px; border-radius: 10px; background: var(--accent); color: #fff; text-decoration: none; }
+</style>
+<p id="message">Sending you back to Datchart…</p>
+<p><a class="button" id="back" href="com.rawmahn.datchart.spike:/back">Back to Datchart</a></p>
+<script>
+  var query = location.search;
+  var params = new URLSearchParams(query);
+  var message = document.getElementById('message');
+  if (params.get('error')) {
+    message.textContent = 'The sign-in came back with an error (' + params.get('error') + '). Datchart will show the details.';
+  } else if (!params.get('code')) {
+    message.textContent = 'This page passes a sign-in result to the Datchart app, and this link has none.';
+  }
+  if (query) {
+    var target = 'com.rawmahn.datchart.spike:/https' + query;
+    document.getElementById('back').href = target;
+    location.replace(target);
+  }
+</script>
+</html>

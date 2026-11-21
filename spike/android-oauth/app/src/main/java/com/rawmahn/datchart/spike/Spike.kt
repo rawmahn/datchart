@@ -72,6 +72,9 @@ enum class Redirect(val label: String, val uri: String) {
     LOOPBACK("Loopback 127.0.0.1", "http://127.0.0.1:47823/callback"),
     // Private-use scheme. PostHog accepts it, Tally's DCR rejects it.
     SCHEME("Custom scheme", "com.rawmahn.datchart.spike:/oauth"),
+    // https page on the project's GitHub Pages (site/oauth/) that forwards the query to
+    // com.rawmahn.datchart.spike:/https. No App Link needed; avoids the browser -> loopback hop.
+    HTTPS("https bounce page", "https://rawmahn.github.io/datchart/oauth/"),
 }
 
 /** Everything the spike does, with a log Roman can copy into the issue. */
@@ -110,11 +113,11 @@ object Spike {
         runCatching { logFile.delete() }
     }
 
-    private fun appVersion(): String =
+    fun appVersion(): String =
         runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "?"
 
     /** Data Saver and the battery "restricted" setting both cut an app's network while it is in the background. */
-    private fun backgroundLimits(): String {
+    fun backgroundLimits(): String {
         val cm = app.getSystemService(ConnectivityManager::class.java)
         val dataSaver = when (cm?.restrictBackgroundStatus) {
             ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED -> "on for this app"
@@ -232,7 +235,8 @@ object Spike {
             .put("server", server.id).put("state", state).put("verifier", verifier)
             .put("client_id", clientId).put("redirect", redirect.name)
             .put("token_endpoint", asm.getString("token_endpoint")).put("resource", asm.getString("x_resource"))
-        prefs.edit().putString("pending", pending.toString()).apply()
+            .put("opened_at", System.currentTimeMillis())
+        prefs.edit().putString("pending", pending.toString()).remove("callback").apply()
         val url = OAuth.authorizeUrl(
             asm.getString("authorization_endpoint"), clientId, redirect.uri,
             OAuth.challenge(verifier), state, scopeText, asm.getString("x_resource"),
@@ -255,6 +259,8 @@ object Spike {
                         val line = BufferedReader(InputStreamReader(conn.getInputStream())).readLine().orEmpty()
                         val (path, query) = OAuth.requestTarget(line) ?: ("" to null)
                         val hit = path == "/callback"
+                        // Every connection, so a redirect to an unexpected path still shows up (values left out).
+                        say("loopback: connection: ${line.substringBefore(' ').ifEmpty { "(empty request)" }} $path ${OAuth.describeParams(query)}")
                         val html = if (hit) {
                             "<html><body style='font:20px sans-serif;padding:24px'><p>Signed in. Datchart should come back by itself.</p>" +
                                 "<p><a href='com.rawmahn.datchart.spike:/back'>Back to Datchart</a></p></body></html>"
@@ -294,6 +300,10 @@ object Spike {
     fun onIntent(uri: Uri) {
         when (uri.path) {
             "/oauth" -> prefs.edit().putString("callback", JSONObject().put("query", uri.encodedQuery.orEmpty()).put("via", "custom scheme").toString()).commit()
+            "/https" -> {
+                say("https bounce page handed back ${OAuth.describeParams(uri.encodedQuery)}")
+                prefs.edit().putString("callback", JSONObject().put("query", uri.encodedQuery.orEmpty()).put("via", "https bounce page").toString()).commit()
+            }
             "/back" -> say("back link tapped (the app did not come back by itself)")
             else -> say("unknown intent $uri")
         }
@@ -302,7 +312,11 @@ object Spike {
     /** From MainActivity.onResume: finish a sign-in whose redirect arrived, now that the app is in front. */
     fun resume() {
         if (finishing) return
-        val cb = prefs.getString("callback", null)?.let(::JSONObject) ?: return
+        val cb = prefs.getString("callback", null)?.let(::JSONObject)
+        if (cb == null) {
+            notePendingWithoutRedirect()
+            return
+        }
         finishing = true
         scope.launch {
             try {
@@ -311,6 +325,16 @@ object Spike {
                 finishing = false
             }
         }
+    }
+
+    /** Back in the app while a sign-in waits for its redirect: says how long the tab was open, so a lost redirect shows. */
+    private fun notePendingWithoutRedirect() {
+        val pending = prefs.getString("pending", null)?.let(::JSONObject) ?: return
+        val secs = (System.currentTimeMillis() - pending.optLong("opened_at")) / 1000
+        if (secs !in 2L..15L * 60) return
+        val server = SERVERS.firstOrNull { it.id == pending.optString("server") }?.name ?: "?"
+        val redirect = runCatching { Redirect.valueOf(pending.getString("redirect")).label }.getOrDefault("?")
+        say("$server: back in the app $secs s after opening the sign-in tab, no redirect arrived yet ($redirect)")
     }
 
     private suspend fun finish(params: Map<String, String>, via: String) {

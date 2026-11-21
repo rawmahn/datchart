@@ -16,7 +16,9 @@ Locally: `./gradlew testDebugUnitTest assembleDebug` (JDK 17+, Android SDK 35).
 
 ## What to try on the phone
 
-1. Pick a redirect (loopback is the default), tap **Sign in** on a server, log in in the Custom Tab.
+1. Check the title says the build you installed. Pick a redirect (loopback is the default), tap
+   **Sign in** on a server, log in in the Custom Tab. For Tally, if loopback doesn't come back, try the
+   **https bounce page**.
 2. **List tools**, then **Call tool** (the defaults are one read-only call per server).
 3. **Refresh token** to check refresh; the app also refreshes by itself when the access token has expired.
 4. **Copy log** and paste it into the issue.
@@ -56,6 +58,33 @@ Since build 2 the redirect is only stored. The exchange runs when the app is bac
 and is retried on the next resume if the network fails. The log is kept on disk and starts with the
 phone's Android version and its Data Saver / background settings.
 The real app has to do the same: no token calls from the background without a foreground service or WorkManager.
+
+## Second phone run (2026-11-21, still build 1)
+
+The log pasted for "build 2" came from build 1: it has build 1's `loopback: got /callback` line, no
+`app started (build …)` header, and reuses the PostHog client registered in the first run, which a
+fresh install could not have. Build 2 most likely never installed: each build is signed with its own
+debug key, so Android refuses it until the old one is uninstalled. What this run still showed:
+
+- **PostHog works end to end over loopback.** Token exchange succeeded this time (so the background
+  network cut is intermittent, not a rule), `expires_in=604800` (7 days), a refresh token is issued, the
+  granted scopes are exactly the requested ones, and `exec` with `execute-sql` ran in ~1 s with
+  `query:read` + `project:read` (among the requested set). Refresh was not tried.
+- **Tally never redirected back.** Three sign-ins, each ~24 s in the tab, and the loopback listener got
+  no `/callback` (build 1 did not log other connections). How Tally's flow works, read from its pages:
+  `api.tally.so/oauth/authorize` 302s to `tally.so/oauth/authorize`, which sends a signed-out browser to
+  `/login` and keeps the request in a `returnTo` cookie for 10 minutes. The consent page then POSTs a
+  form to `api.tally.so/oauth/authorize`, which should redirect to the `redirect_uri`; if the page has not
+  been left 5 s after **Accept**, it switches to a "success" message on its own. So a "success" page
+  with nothing arriving in the app means the browser never reached `127.0.0.1`.
+
+Build 3 makes the next run decisive: the build number is in the app's title and on the first line of
+a copied log; the loopback listener logs every connection (path and parameter names, never values);
+coming back to the app while a sign-in still waits logs how long the tab was open; and a third redirect,
+**https bounce page** (`https://rawmahn.github.io/datchart/oauth/`, `site/oauth/index.html`), passes the
+result to the app through its scheme. It needs no App Link (so no `assetlinks.json`), and it skips the
+browser-to-loopback hop. The code passes through a public static page, which PKCE makes useless to
+anyone else.
 
 Still to find out on the phone: whether the login pages work in a Custom Tab, token lifetimes,
 whether refresh works and rotates the refresh token, which PostHog scopes the `exec` tool needs,

@@ -76,4 +76,10 @@ class OAuthTest {
         assertEquals("/favicon.ico" to null, OAuth.requestTarget("GET /favicon.ico HTTP/1.1"))
         assertEquals(mapOf("error" to "access_denied", "x" to ""), OAuth.parseQuery("?error=access_denied&x"))
     }
+
+    @Test fun describeParamsHidesValuesButErrors() {
+        assertEquals("with code, state, iss", OAuth.describeParams("code=secret&state=s1&iss=https%3A%2F%2Fx"))
+        assertEquals("with error=access_denied, error_description=no way, state", OAuth.describeParams("error=access_denied&error_description=no%20way&state=s"))
+        assertEquals("(no parameters)", OAuth.describeParams(null))
+    }
 }
